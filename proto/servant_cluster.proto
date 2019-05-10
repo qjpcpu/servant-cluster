@@ -1,0 +1,19 @@
+syntax = "proto3";
+package proto;
+
+service TicketDispatcher {
+    rpc GetTickets(Empty) returns (TicketsInfo) {}
+    rpc SetTickets(TicketsInfo) returns(Empty){}
+}
+
+message Empty {}
+
+message TicketInfo {
+     string id =1;
+ int32 type =2;
+ bytes content=3;
+}
+
+message TicketsInfo {
+    repeated TicketInfo tickets_info = 1;
+}
