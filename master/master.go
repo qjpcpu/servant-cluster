@@ -103,13 +103,13 @@ func (m *Master) loopOnce() error {
 	}
 	for _, p := range newDis {
 		if ot, ok := servantTicketsM[p.ServantID]; ok && ot.Equals(p.Tickets) {
-			log.M(util.ModuleName).Debugf("remain %s %d tickets OK", p.ServantID, len(p.Tickets))
+			log.M(util.ModuleName).Debugf("remain %s %d tickets: %s", p.ServantID, len(p.Tickets), p.Tickets.Summary())
 			continue
 		}
 		if err = m.sa.SetServantTickets(p.ServantID, p.Tickets); err != nil {
 			log.M(util.ModuleName).Warningf("dispatch %s tickets fail:%v", p.ServantID, err)
 		} else {
-			log.M(util.ModuleName).Debugf("dispatch %s %d tickets OK", p.ServantID, len(p.Tickets))
+			log.M(util.ModuleName).Debugf("dispatch %s %d tickets: %s", p.ServantID, len(p.Tickets), p.Tickets.Summary())
 		}
 	}
 	return nil

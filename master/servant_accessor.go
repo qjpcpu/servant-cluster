@@ -53,7 +53,7 @@ func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, error
 	client := proto.NewTicketDispatcherClient(conn)
 	info, err := client.GetTickets(context.Background(), &proto.Empty{})
 	if err != nil {
-		log.M(util.ModuleName).Errorf("get servant shop fail:%v", err)
+		log.M(util.ModuleName).Errorf("get servant tickets fail:%v", err)
 		return nil, err
 	}
 	var tks tickets.Tickets
@@ -70,7 +70,7 @@ func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, error
 func (wa *servantAccessor) SetServantTickets(wid string, tks tickets.Tickets) error {
 	conn, err := grpc.Dial(wid, grpc.WithInsecure())
 	if err != nil {
-		log.M(util.ModuleName).Errorf("set servant shop fail:%v", err)
+		log.M(util.ModuleName).Errorf("set servant tickets fail:%v", err)
 		return err
 	}
 	defer conn.Close()

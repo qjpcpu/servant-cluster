@@ -61,21 +61,27 @@ func (wb *ServantBuilder) SetInterval(intervalSec time.Duration) *ServantBuilder
 	return wb
 }
 func (wb *ServantBuilder) Run() *ServantPool {
-	go func() {
-		for {
-			registProcess(wb.cli, wb.keyPrefix, wb.wid)
-		}
-	}()
 	if wb.workerNum == 0 {
 		wb.workerNum = 1
 	}
 	if wb.intervalSec == 0 {
 		wb.intervalSec = 5
 	}
-	return newPool(wb.tq, wb.workerNum, wb.intervalSec, wb.jobHandler)
+	sp := newPool(wb.tq, wb.workerNum, wb.intervalSec, wb.jobHandler)
+	go func(closeC <-chan struct{}) {
+		for {
+			registProcess(wb.cli, wb.keyPrefix, wb.wid, closeC)
+			select {
+			case <-closeC:
+				return
+			default:
+			}
+		}
+	}(sp.closeC)
+	return sp
 }
 
-func registProcess(cli *clientv3.Client, keyf string, wid string) error {
+func registProcess(cli *clientv3.Client, keyf string, wid string, closeC <-chan struct{}) error {
 	session, err := concurrency.NewSession(cli, concurrency.WithTTL(10))
 	if err != nil {
 		return err
@@ -87,6 +93,9 @@ func registProcess(cli *clientv3.Client, keyf string, wid string) error {
 	if _, err = client.Put(context.Background(), k, wid, clientv3.WithLease(session.Lease())); err != nil {
 		return err
 	}
-	<-session.Done()
+	select {
+	case <-closeC:
+	case <-session.Done():
+	}
 	return nil
 }

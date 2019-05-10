@@ -39,3 +39,15 @@ func (ts Tickets) Equals(ts1 Tickets) bool {
 	s1 := strings.Join(list1, ",")
 	return s == s1
 }
+
+func (ts Tickets) Summary() string {
+	var list []string
+	for _, t := range ts {
+		rs := []rune(t.ID)
+		if len(rs) > 11 {
+			rs = append(rs[:8], 46, 46, 46)
+		}
+		list = append(list, string(rs))
+	}
+	return "[" + strings.Join(list, ",") + "]"
+}
