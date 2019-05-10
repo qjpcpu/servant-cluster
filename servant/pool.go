@@ -7,6 +7,7 @@ import (
 
 	"github.com/qjpcpu/log"
 	"github.com/qjpcpu/servant-cluster/tickets"
+	"github.com/qjpcpu/servant-cluster/util"
 )
 
 type ServantPool struct {
@@ -34,7 +35,7 @@ func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandl
 		for {
 			select {
 			case <-wp.closeC:
-				log.Info("srvtpool exit.")
+				log.M(util.ModuleName).Info("srvtpool exit.")
 				return
 			case size := <-q.SizeChangeC():
 				wp.ResizeIfNeed(size)
@@ -92,7 +93,7 @@ func (p *ServantPool) AddServant(n int) {
 		p.active = append(p.active, p.silent[0:n]...)
 		p.silent = p.silent[n:]
 	}
-	log.Infof("增加worker至%d个", len(p.active))
+	log.M(util.ModuleName).Infof("增加worker至%d个", len(p.active))
 }
 
 func (p *ServantPool) RemoveServant(n int) {
@@ -111,7 +112,7 @@ func (p *ServantPool) RemoveServant(n int) {
 	}
 	p.silent = append(p.silent, p.active[len(p.active)-n:]...)
 	p.active = p.active[0 : len(p.active)-n]
-	log.Infof("减少worker至%d个", len(p.active))
+	log.M(util.ModuleName).Infof("减少worker至%d个", len(p.active))
 }
 
 func (p *ServantPool) ServantCount() int {

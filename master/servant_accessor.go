@@ -7,6 +7,7 @@ import (
 	"github.com/qjpcpu/log"
 	"github.com/qjpcpu/servant-cluster/proto"
 	"github.com/qjpcpu/servant-cluster/tickets"
+	"github.com/qjpcpu/servant-cluster/util"
 	"go.etcd.io/etcd/clientv3"
 	"google.golang.org/grpc"
 )
@@ -31,7 +32,7 @@ func (wa *servantAccessor) GetServants() ([]string, error) {
 		return nil, err
 	}
 	if len(resp.Kvs) == 0 {
-		log.Debug("no servants ready.")
+		log.M(util.ModuleName).Debug("no servants ready.")
 		return nil, nil
 	}
 	var list []string
@@ -39,7 +40,7 @@ func (wa *servantAccessor) GetServants() ([]string, error) {
 		tokens := strings.Split(string(kv.Key), "/")
 		list = append(list, tokens[len(tokens)-1])
 	}
-	log.Debugf("get servants:%v", list)
+	log.M(util.ModuleName).Debugf("get servants:%v", list)
 	return list, nil
 }
 
@@ -52,7 +53,7 @@ func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, error
 	client := proto.NewTicketDispatcherClient(conn)
 	info, err := client.GetTickets(context.Background(), &proto.Empty{})
 	if err != nil {
-		log.Errorf("get servant shop fail:%v", err)
+		log.M(util.ModuleName).Errorf("get servant shop fail:%v", err)
 		return nil, err
 	}
 	var tks tickets.Tickets
@@ -69,7 +70,7 @@ func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, error
 func (wa *servantAccessor) SetServantTickets(wid string, tks tickets.Tickets) error {
 	conn, err := grpc.Dial(wid, grpc.WithInsecure())
 	if err != nil {
-		log.Errorf("set servant shop fail:%v", err)
+		log.M(util.ModuleName).Errorf("set servant shop fail:%v", err)
 		return err
 	}
 	defer conn.Close()

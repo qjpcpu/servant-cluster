@@ -5,6 +5,7 @@ import (
 
 	"github.com/qjpcpu/log"
 	"github.com/qjpcpu/servant-cluster/tickets"
+	"github.com/qjpcpu/servant-cluster/util"
 )
 
 type srvt struct {
@@ -49,7 +50,7 @@ func (w *srvt) start() {
 func (w *srvt) doSafeWork(t tickets.Ticket) {
 	defer w.tq.Recycle(t)
 	if err := w.handler(t); err != nil {
-		log.Debugf("[worker-%d] dowork fail:%v", w.id, err)
+		log.M(util.ModuleName).Debugf("[worker-%d] dowork fail:%v", w.id, err)
 	}
 }
 
@@ -57,7 +58,7 @@ func (w *srvt) doWork(t tickets.Ticket) {
 	w.doSafeWork(t)
 	select {
 	case <-w.silentC:
-		log.Infof("[worker-%d] goes silent", w.id)
+		log.M(util.ModuleName).Infof("[worker-%d] goes silent", w.id)
 		select {
 		case <-w.activeC:
 			return

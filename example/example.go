@@ -26,6 +26,7 @@ func main() {
 		Prefix:                  "/servant-cluster/example",
 		MasterScheduleInterval:  10 * time.Second,
 		ServantScheduleInterval: 1 * time.Second,
+		//LogFile:                 "./log/example.log",
 	}
 	if err := f.Boot(); err != nil {
 		fmt.Println("fsn boot fail:", err)

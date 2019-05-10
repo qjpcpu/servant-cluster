@@ -16,21 +16,24 @@ type Master struct {
 	Prefix           string
 	ScheduleInterval time.Duration
 	DispatchHandler  DispatchHandler
-	ha               *election.HA
-	sa               *servantAccessor
 	EtcdCli          *clientv3.Client
+
+	ha     *election.HA
+	sa     *servantAccessor
+	closeC chan struct{}
 }
 
 func (m *Master) Run() error {
 	if m.DispatchHandler == nil || m.EtcdCli == nil || len(m.HaEtcdEndpoints) == 0 {
 		return errors.New("bad master config")
 	}
+	m.closeC = make(chan struct{})
 	ha := election.New(m.HaEtcdEndpoints, util.MasterKey(m.Prefix)).TTL(15)
 	m.ha = ha
 	m.sa = newServantAccessor(m.EtcdCli, util.ServantKey(m.Prefix))
 	go ha.Start()
 	if !ha.IsLeader() {
-		log.Info("wait to be dispatcher")
+		log.M(util.ModuleName).Info("wait to be dispatcher")
 		for {
 			role := <-ha.RoleC()
 			if role == election.Leader {
@@ -41,17 +44,17 @@ func (m *Master) Run() error {
 	if m.ScheduleInterval == 0 {
 		m.ScheduleInterval = 1 * time.Minute
 	}
-	log.Info("I am dispatcher now.")
+	log.M(util.ModuleName).Info("I am dispatcher now.")
 	for {
 		if err := m.loopOnce(); err != nil {
-			log.Errorf("dispatch fail:%v", err)
+			log.M(util.ModuleName).Errorf("dispatch fail:%v", err)
 		}
 		select {
 		case role := <-ha.RoleC():
 			if role == election.Leader {
-				log.Info("I am dispatcher now, restart dispatching")
+				log.M(util.ModuleName).Info("I am dispatcher now, restart dispatching")
 			} else {
-				log.Info("Switch to candidate, pause dispatching")
+				log.M(util.ModuleName).Info("Switch to candidate, pause dispatching")
 				for {
 					role2 := <-ha.RoleC()
 					if role2 == election.Leader {
@@ -60,14 +63,21 @@ func (m *Master) Run() error {
 				}
 			}
 		case <-time.After(m.ScheduleInterval):
+		case <-m.closeC:
+			return nil
 		}
 	}
+}
+
+func (m *Master) Stop() {
+	close(m.closeC)
+	m.ha.Stop()
 }
 
 func (m *Master) loopOnce() error {
 	servantList, err := m.sa.GetServants()
 	if err != nil {
-		log.Errorf("get servants fail:%v", err)
+		log.M(util.ModuleName).Errorf("get servants fail:%v", err)
 		return err
 	}
 	servantTicketsM := make(map[string]tickets.Tickets)
@@ -75,7 +85,7 @@ func (m *Master) loopOnce() error {
 	for _, srvt := range servantList {
 		tks, err := m.sa.GetServantTickets(srvt)
 		if err != nil {
-			log.Errorf("get servant %s tickets fail:%v", srvt, err)
+			log.M(util.ModuleName).Errorf("get servant %s tickets fail:%v", srvt, err)
 			return err
 		}
 		servantTicketsM[srvt] = tks
@@ -88,18 +98,18 @@ func (m *Master) loopOnce() error {
 	// dispatch
 	newDis, err := m.DispatchHandler(old)
 	if err != nil {
-		log.Errorf("dispatch fail:%v", err)
+		log.M(util.ModuleName).Errorf("dispatch fail:%v", err)
 		return err
 	}
 	for _, p := range newDis {
 		if ot, ok := servantTicketsM[p.ServantID]; ok && ot.Equals(p.Tickets) {
-			log.Debugf("remain %s %d tickets OK", p.ServantID, len(p.Tickets))
+			log.M(util.ModuleName).Debugf("remain %s %d tickets OK", p.ServantID, len(p.Tickets))
 			continue
 		}
 		if err = m.sa.SetServantTickets(p.ServantID, p.Tickets); err != nil {
-			log.Warningf("dispatch %s tickets fail:%v", p.ServantID, err)
+			log.M(util.ModuleName).Warningf("dispatch %s tickets fail:%v", p.ServantID, err)
 		} else {
-			log.Debugf("dispatch %s %d tickets OK", p.ServantID, len(p.Tickets))
+			log.M(util.ModuleName).Debugf("dispatch %s %d tickets OK", p.ServantID, len(p.Tickets))
 		}
 	}
 	return nil

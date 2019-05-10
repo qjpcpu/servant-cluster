@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
+	"github.com/qjpcpu/log"
 	"github.com/qjpcpu/servant-cluster/master"
 	"github.com/qjpcpu/servant-cluster/proto"
 	"github.com/qjpcpu/servant-cluster/servant"
 	"github.com/qjpcpu/servant-cluster/tickets"
+	"github.com/qjpcpu/servant-cluster/util"
 	"go.etcd.io/etcd/clientv3"
 	"google.golang.org/grpc"
 )
@@ -24,15 +27,24 @@ type Fsn struct {
 	Prefix                  string
 	MasterScheduleInterval  time.Duration
 	ServantScheduleInterval time.Duration
+	LogFile                 string
 	// generated in runtime
+	stopped     int32
 	tq          *tickets.Queue
 	etcdCli     *clientv3.Client
 	masterCtrl  *master.Master
 	servantPool *servant.ServantPool
+	grpcServer  *grpc.Server
 	port        string
 }
 
 func (f *Fsn) Boot() error {
+	if f.stopped == 1 {
+		return errors.New("already stopped")
+	}
+	// setup log
+	f.setupLog()
+
 	// connect etcd
 	if err := f.connectEtcd(); err != nil {
 		return err
@@ -54,6 +66,10 @@ func (f *Fsn) Boot() error {
 		return err
 	}
 	return nil
+}
+
+func (f *Fsn) setupLog() {
+	log.GetMBuilder(util.ModuleName).SetFormat(log.SimpleColorFormat).SetFile(f.LogFile).Submit()
 }
 
 func (f *Fsn) startServant() error {
@@ -123,5 +139,19 @@ func (f *Fsn) startServantServer() (*servant.TicketInfoServer, error) {
 	proto.RegisterTicketDispatcherServer(grpcServer, server)
 	fmt.Printf("Listening and serving grpc on %s\n", server.Addr)
 	go grpcServer.Serve(ln)
+	f.grpcServer = grpcServer
 	return server, nil
+}
+
+func (f *Fsn) Shutdown() {
+	if atomic.CompareAndSwapInt32(&f.stopped, 0, 1) {
+		// stop master
+		f.masterCtrl.Stop()
+		// stop servants
+		f.servantPool.Stop()
+		// stop grpc server
+		f.grpcServer.Stop()
+		// close etcd client
+		f.etcdCli.Close()
+	}
 }
