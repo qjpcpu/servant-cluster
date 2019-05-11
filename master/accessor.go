@@ -15,6 +15,15 @@ type ServantPayload struct {
 
 type ServantPayloads []ServantPayload
 
+type LastDispatch struct {
+	ServantPayloads ServantPayloads
+}
+
+type NewDispatch struct {
+	ForceFlush      bool
+	ServantPayloads ServantPayloads
+}
+
 func (sp ServantPayloads) Equals(sp1 ServantPayloads) bool {
 	var equlas bool
 	for doOnce := true; doOnce; doOnce = false {
@@ -48,4 +57,4 @@ func (sp ServantPayloads) Equals(sp1 ServantPayloads) bool {
 	return equlas
 }
 
-type DispatchHandler func(lastDisptch ServantPayloads) (ServantPayloads, error)
+type DispatchHandler func(*LastDispatch, *NewDispatch) error

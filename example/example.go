@@ -38,29 +38,29 @@ func main() {
 	<-stopC
 }
 
-func masterDispatchHandler(lastDisptch master.ServantPayloads) (master.ServantPayloads, error) {
+func masterDispatchHandler(lastDisptch *master.LastDispatch, newDispatch *master.NewDispatch) error {
 	fmt.Println("==================old dispatch==================")
-	for _, s := range lastDisptch {
+	for _, s := range lastDisptch.ServantPayloads {
 		fmt.Printf("servant %v tickets: %s system info:%s\n", s.ServantID, s.Tickets.Summary(), string(s.SystemStats))
 	}
 	fmt.Println("==================old dispatch==================")
 	// random redispatch
 	splitI := rand.Intn(len(allTickets))
-	newDispatch := make(master.ServantPayloads, len(lastDisptch))
-	for i := 0; i < len(lastDisptch); i++ {
-		newDispatch[i].ServantID = lastDisptch[i].ServantID
+	newDispatch.ServantPayloads = make(master.ServantPayloads, len(lastDisptch.ServantPayloads))
+	for i := 0; i < len(lastDisptch.ServantPayloads); i++ {
+		newDispatch.ServantPayloads[i].ServantID = lastDisptch.ServantPayloads[i].ServantID
 	}
 
 	for i := 0; i < len(allTickets); i++ {
-		si := (i + splitI) % len(newDispatch)
-		newDispatch[si].Tickets = append(newDispatch[si].Tickets, allTickets[i])
+		si := (i + splitI) % len(newDispatch.ServantPayloads)
+		newDispatch.ServantPayloads[si].Tickets = append(newDispatch.ServantPayloads[si].Tickets, allTickets[i])
 	}
 	fmt.Println("==================new dispatch==================")
-	for _, s := range newDispatch {
+	for _, s := range newDispatch.ServantPayloads {
 		fmt.Printf("servant %v tickets: %s\n", s.ServantID, s.Tickets.Summary())
 	}
 	fmt.Println("==================new dispatch==================")
-	return newDispatch, nil
+	return nil
 }
 
 func servantHandler(t tickets.Ticket) error {

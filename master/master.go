@@ -97,13 +97,13 @@ func (m *Master) loopOnce() error {
 	}
 
 	// dispatch
-	newDis, err := m.DispatchHandler(old)
-	if err != nil {
+	var newDis NewDispatch
+	if err := m.DispatchHandler(&LastDispatch{ServantPayloads: old}, &newDis); err != nil {
 		log.M(util.ModuleName).Errorf("dispatch fail:%v", err)
 		return err
 	}
-	for _, p := range newDis {
-		if ot, ok := servantTicketsM[p.ServantID]; ok && ot.Equals(p.Tickets) {
+	for _, p := range newDis.ServantPayloads {
+		if ot, ok := servantTicketsM[p.ServantID]; ok && ot.Equals(p.Tickets) && !newDis.ForceFlush {
 			log.M(util.ModuleName).Debugf("remain %s %d tickets: %s", p.ServantID, len(p.Tickets), p.Tickets.Summary())
 			continue
 		}
