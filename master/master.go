@@ -98,20 +98,26 @@ func (m *Master) loopOnce() error {
 
 	// dispatch
 	var newDis NewDispatch
-	if err := m.DispatchHandler(&LastDispatch{ServantPayloads: old}, &newDis); err != nil {
+	if err := m.DispatchHandler(&CurrentDispatch{ServantPayloads: old}, &newDis); err != nil {
 		log.M(util.ModuleName).Errorf("dispatch fail:%v", err)
 		return err
 	}
 	for _, p := range newDis.ServantPayloads {
 		if ot, ok := servantTicketsM[p.ServantID]; ok && ot.Equals(p.Tickets) && !newDis.ForceFlush {
 			log.M(util.ModuleName).Debugf("remain %s %d tickets: %s", p.ServantID, len(p.Tickets), p.Tickets.Summary())
+			delete(servantTicketsM, p.ServantID)
 			continue
 		}
+		delete(servantTicketsM, p.ServantID)
 		if err = m.sa.SetServantTickets(p.ServantID, p.Tickets); err != nil {
 			log.M(util.ModuleName).Warningf("dispatch %s tickets fail:%v", p.ServantID, err)
 		} else {
 			log.M(util.ModuleName).Debugf("dispatch %s %d tickets: %s", p.ServantID, len(p.Tickets), p.Tickets.Summary())
 		}
+	}
+	for sid := range servantTicketsM {
+		m.sa.SetServantTickets(sid, nil)
+		log.M(util.ModuleName).Warningf("clear %s tickets", sid)
 	}
 	return nil
 }

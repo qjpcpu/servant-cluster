@@ -14,8 +14,17 @@ type ServantPayload struct {
 }
 
 type ServantPayloads []ServantPayload
+type ServantPayloadsByTickets []ServantPayload
 
-type LastDispatch struct {
+func (a ServantPayloads) Len() int           { return len(a) }
+func (a ServantPayloads) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ServantPayloads) Less(i, j int) bool { return a[i].ServantID < a[j].ServantID }
+
+func (a ServantPayloadsByTickets) Len() int           { return len(a) }
+func (a ServantPayloadsByTickets) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ServantPayloadsByTickets) Less(i, j int) bool { return len(a[i].Tickets) < len(a[j].Tickets) }
+
+type CurrentDispatch struct {
 	ServantPayloads ServantPayloads
 }
 
@@ -57,4 +66,4 @@ func (sp ServantPayloads) Equals(sp1 ServantPayloads) bool {
 	return equlas
 }
 
-type DispatchHandler func(*LastDispatch, *NewDispatch) error
+type DispatchHandler func(*CurrentDispatch, *NewDispatch) error

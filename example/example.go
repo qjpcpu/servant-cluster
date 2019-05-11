@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/qjpcpu/servant-cluster/fsn"
@@ -38,23 +37,15 @@ func main() {
 	<-stopC
 }
 
-func masterDispatchHandler(lastDisptch *master.LastDispatch, newDispatch *master.NewDispatch) error {
+func masterDispatchHandler(lastDisptch *master.CurrentDispatch, newDispatch *master.NewDispatch) error {
 	fmt.Println("==================old dispatch==================")
 	for _, s := range lastDisptch.ServantPayloads {
 		fmt.Printf("servant %v tickets: %s system info:%s\n", s.ServantID, s.Tickets.Summary(), string(s.SystemStats))
 	}
 	fmt.Println("==================old dispatch==================")
-	// random redispatch
-	splitI := rand.Intn(len(allTickets))
-	newDispatch.ServantPayloads = make(master.ServantPayloads, len(lastDisptch.ServantPayloads))
-	for i := 0; i < len(lastDisptch.ServantPayloads); i++ {
-		newDispatch.ServantPayloads[i].ServantID = lastDisptch.ServantPayloads[i].ServantID
-	}
 
-	for i := 0; i < len(allTickets); i++ {
-		si := (i + splitI) % len(newDispatch.ServantPayloads)
-		newDispatch.ServantPayloads[si].Tickets = append(newDispatch.ServantPayloads[si].Tickets, allTickets[i])
-	}
+	master.ConservativeAverageDispatch(allTickets, lastDisptch, newDispatch)
+
 	fmt.Println("==================new dispatch==================")
 	for _, s := range newDispatch.ServantPayloads {
 		fmt.Printf("servant %v tickets: %s\n", s.ServantID, s.Tickets.Summary())

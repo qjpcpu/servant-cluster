@@ -21,6 +21,10 @@ type Ticket struct {
 
 type Tickets []Ticket
 
+func (a Tickets) Len() int           { return len(a) }
+func (a Tickets) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a Tickets) Less(i, j int) bool { return a[i].ID < a[j].ID }
+
 func (ts Tickets) Equals(ts1 Tickets) bool {
 	if len(ts) != len(ts1) {
 		return false
