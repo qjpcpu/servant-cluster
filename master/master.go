@@ -83,15 +83,16 @@ func (m *Master) loopOnce() error {
 	servantTicketsM := make(map[string]tickets.Tickets)
 	var old ServantPayloads
 	for _, srvt := range servantList {
-		tks, err := m.sa.GetServantTickets(srvt)
+		tks, stats, err := m.sa.GetServantTickets(srvt)
 		if err != nil {
 			log.M(util.ModuleName).Errorf("get servant %s tickets fail:%v", srvt, err)
 			return err
 		}
 		servantTicketsM[srvt] = tks
 		old = append(old, ServantPayload{
-			ServantID: srvt,
-			Tickets:   tks,
+			ServantID:   srvt,
+			Tickets:     tks,
+			SystemStats: stats,
 		})
 	}
 

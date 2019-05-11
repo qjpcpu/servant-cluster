@@ -8,8 +8,9 @@ import (
 )
 
 type ServantPayload struct {
-	ServantID string
-	Tickets   tickets.Tickets
+	ServantID   string
+	Tickets     tickets.Tickets
+	SystemStats []byte
 }
 
 type ServantPayloads []ServantPayload

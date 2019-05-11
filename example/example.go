@@ -13,14 +13,16 @@ import (
 
 var (
 	allTickets tickets.Tickets
+	f          *fsn.Fsn
 )
 
 func main() {
 	loadTicketsFromStorage()
-	f := &fsn.Fsn{
+	f = &fsn.Fsn{
 		EtcdEndpoints:           []string{"127.0.0.1:2379"},
 		DispatchHandler:         masterDispatchHandler,
 		ServantHandler:          servantHandler,
+		SysFetcher:              sysFetcher, // optional
 		MaxServantInProccess:    2,
 		IP:                      "127.0.0.1",
 		Prefix:                  "/servant-cluster/example",
@@ -37,6 +39,11 @@ func main() {
 }
 
 func masterDispatchHandler(lastDisptch master.ServantPayloads) (master.ServantPayloads, error) {
+	fmt.Println("==================old dispatch==================")
+	for _, s := range lastDisptch {
+		fmt.Printf("servant %v tickets: %s system info:%s\n", s.ServantID, s.Tickets.Summary(), string(s.SystemStats))
+	}
+	fmt.Println("==================old dispatch==================")
 	// random redispatch
 	splitI := rand.Intn(len(allTickets))
 	newDispatch := make(master.ServantPayloads, len(lastDisptch))
@@ -48,12 +55,22 @@ func masterDispatchHandler(lastDisptch master.ServantPayloads) (master.ServantPa
 		si := (i + splitI) % len(newDispatch)
 		newDispatch[si].Tickets = append(newDispatch[si].Tickets, allTickets[i])
 	}
+	fmt.Println("==================new dispatch==================")
+	for _, s := range newDispatch {
+		fmt.Printf("servant %v tickets: %s\n", s.ServantID, s.Tickets.Summary())
+	}
+	fmt.Println("==================new dispatch==================")
 	return newDispatch, nil
 }
 
 func servantHandler(t tickets.Ticket) error {
 	fmt.Printf("consume ticket id:%s data:%s\n", t.ID, string(t.Content))
 	return nil
+}
+
+func sysFetcher() ([]byte, error) {
+	info := fmt.Sprintf("my addr: %s, time: %s", f.Addr(), time.Now().Format("2006-01-02 15:04:05"))
+	return []byte(info), nil
 }
 
 func loadTicketsFromStorage() {

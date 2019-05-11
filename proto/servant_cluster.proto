@@ -9,11 +9,16 @@ service TicketDispatcher {
 message Empty {}
 
 message TicketInfo {
-     string id =1;
- int32 type =2;
- bytes content=3;
+    string id = 1;
+    int32 type = 2;
+    bytes content = 3;
+}
+
+message SystemInfo {
+    bytes stats = 1;
 }
 
 message TicketsInfo {
     repeated TicketInfo tickets_info = 1;
+    SystemInfo sys_info = 2;
 }

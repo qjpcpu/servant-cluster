@@ -8,12 +8,13 @@ import (
 )
 
 type TicketInfoServer struct {
-	Addr string
-	tq   *tickets.Queue
+	Addr    string
+	tq      *tickets.Queue
+	sysFunc tickets.SysInfoGetter
 }
 
-func NewTicketInfoServer(tq *tickets.Queue) *TicketInfoServer {
-	ts := &TicketInfoServer{tq: tq}
+func NewTicketInfoServer(tq *tickets.Queue, sysGetter tickets.SysInfoGetter) *TicketInfoServer {
+	ts := &TicketInfoServer{tq: tq, sysFunc: sysGetter}
 	return ts
 }
 
@@ -27,6 +28,13 @@ func (s *TicketInfoServer) GetTickets(c context.Context, e *proto.Empty) (*proto
 			Content: t.Content,
 		}
 		ti.TicketsInfo = append(ti.TicketsInfo, pt)
+	}
+	if s.sysFunc != nil {
+		stats, err := s.sysFunc()
+		if err != nil {
+			return nil, err
+		}
+		ti.SysInfo = &proto.SystemInfo{Stats: stats}
 	}
 	return ti, nil
 }

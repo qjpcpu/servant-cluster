@@ -44,17 +44,17 @@ func (wa *servantAccessor) GetServants() ([]string, error) {
 	return list, nil
 }
 
-func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, error) {
+func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, []byte, error) {
 	conn, err := grpc.Dial(wid, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer conn.Close()
 	client := proto.NewTicketDispatcherClient(conn)
 	info, err := client.GetTickets(context.Background(), &proto.Empty{})
 	if err != nil {
 		log.M(util.ModuleName).Errorf("get servant tickets fail:%v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	var tks tickets.Tickets
 	for _, tk := range info.TicketsInfo {
@@ -64,7 +64,11 @@ func (wa *servantAccessor) GetServantTickets(wid string) (tickets.Tickets, error
 			Type:    tickets.TicketType(tk.Type),
 		})
 	}
-	return tks, nil
+	var stats []byte
+	if sys := info.GetSysInfo(); sys != nil {
+		stats = sys.GetStats()
+	}
+	return tks, stats, nil
 }
 
 func (wa *servantAccessor) SetServantTickets(wid string, tks tickets.Tickets) error {

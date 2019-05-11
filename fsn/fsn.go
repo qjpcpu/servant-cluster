@@ -22,6 +22,7 @@ type Fsn struct {
 	EtcdEndpoints           []string
 	DispatchHandler         master.DispatchHandler
 	ServantHandler          servant.ServantHandler
+	SysFetcher              tickets.SysInfoGetter
 	MaxServantInProccess    int
 	IP                      string
 	Prefix                  string
@@ -66,6 +67,10 @@ func (f *Fsn) Boot() error {
 		return err
 	}
 	return nil
+}
+
+func (f *Fsn) Addr() string {
+	return f.IP + f.port
 }
 
 func (f *Fsn) setupLog() {
@@ -128,7 +133,7 @@ func (f *Fsn) connectEtcd() error {
 }
 
 func (f *Fsn) startServantServer() (*servant.TicketInfoServer, error) {
-	server := servant.NewTicketInfoServer(f.tq)
+	server := servant.NewTicketInfoServer(f.tq, f.SysFetcher)
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return nil, err
