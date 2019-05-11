@@ -25,7 +25,7 @@ func main() {
 		SysFetcher:              sysFetcher, // optional
 		MaxServantInProccess:    2,
 		IP:                      "127.0.0.1",
-		Prefix:                  "/servant-cluster/example",
+		EtcdPrefix:              "/servant-cluster/example",
 		MasterScheduleInterval:  10 * time.Second,
 		ServantScheduleInterval: 1 * time.Second,
 		//LogFile:                 "./log/example.log",

@@ -19,16 +19,26 @@ import (
 
 type Fsn struct {
 	// config fields
-	EtcdEndpoints           []string
-	DispatchHandler         master.DispatchHandler
-	ServantHandler          servant.ServantHandler
-	SysFetcher              tickets.SysInfoGetter
-	MaxServantInProccess    int
-	IP                      string
-	Prefix                  string
-	MasterScheduleInterval  time.Duration
+	// etcd endpoints
+	EtcdEndpoints []string
+	// dispatch implements of master
+	DispatchHandler master.DispatchHandler
+	// ticket servant handler of servant
+	ServantHandler servant.ServantHandler
+	// report servant current system info
+	SysFetcher tickets.SysInfoGetter
+	// max servant parallel in proccess
+	MaxServantInProccess int
+	// ip of current host
+	IP string
+	// etcd key prefix for ha and servants cluster
+	EtcdPrefix string
+	// master schedule interval
+	MasterScheduleInterval time.Duration
+	// servant worker schedule interval for
 	ServantScheduleInterval time.Duration
-	LogFile                 string
+	// fsn log file
+	LogFile string
 	// generated in runtime
 	stopped     int32
 	tq          *tickets.Queue
@@ -81,8 +91,8 @@ func (f *Fsn) startServant() error {
 	if f.ServantHandler == nil {
 		return errors.New("no ServantHandler found")
 	}
-	if f.Prefix == "" {
-		return errors.New("bad etcd prefix key")
+	if f.EtcdPrefix == "" {
+		return errors.New("bad etcd EtcdPrefix key")
 	}
 	if f.IP == "" {
 		return errors.New("no self ip")
@@ -94,7 +104,7 @@ func (f *Fsn) startServant() error {
 	sb.SetTicketsQueue(f.tq)
 	sb.SetEtcdCli(f.etcdCli)
 	sb.SetServantHandler(f.ServantHandler)
-	sb.SetKeyPrefix(f.Prefix)
+	sb.SetKeyPrefix(f.EtcdPrefix)
 	sb.SetServantID(f.IP + f.port)
 	sb.SetServantMaxNum(f.MaxServantInProccess)
 	sb.SetInterval(f.ServantScheduleInterval)
@@ -106,12 +116,12 @@ func (f *Fsn) startMaster() error {
 	if f.DispatchHandler == nil {
 		return errors.New("no DispatchHandler found")
 	}
-	if f.Prefix == "" {
-		return errors.New("bad etcd prefix key")
+	if f.EtcdPrefix == "" {
+		return errors.New("bad etcd EtcdPrefix key")
 	}
 	f.masterCtrl = &master.Master{
 		HaEtcdEndpoints:  f.EtcdEndpoints,
-		Prefix:           f.Prefix,
+		Prefix:           f.EtcdPrefix,
 		ScheduleInterval: f.MasterScheduleInterval,
 		DispatchHandler:  f.DispatchHandler,
 		EtcdCli:          f.etcdCli,
