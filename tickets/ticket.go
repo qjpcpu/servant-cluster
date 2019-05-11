@@ -53,5 +53,6 @@ func (ts Tickets) Summary() string {
 		}
 		list = append(list, string(rs))
 	}
+	sort.Strings(list)
 	return "[" + strings.Join(list, ",") + "]"
 }
