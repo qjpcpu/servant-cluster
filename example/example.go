@@ -38,11 +38,11 @@ func main() {
 }
 
 func masterDispatchHandler(lastDisptch *master.CurrentDispatch, newDispatch *master.NewDispatch) error {
-	fmt.Println("==================old dispatch==================")
+	fmt.Println("==================current dispatch==================")
 	for _, s := range lastDisptch.ServantPayloads {
 		fmt.Printf("servant %v tickets: %s system info:%s\n", s.ServantID, s.Tickets.Summary(), string(s.SystemStats))
 	}
-	fmt.Println("==================old dispatch==================")
+	fmt.Println("==================current dispatch==================")
 
 	master.ConservativeAverageDispatch(allTickets, lastDisptch, newDispatch)
 

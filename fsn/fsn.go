@@ -39,6 +39,7 @@ type Fsn struct {
 	ServantScheduleInterval time.Duration
 	// fsn log file
 	LogFile string
+	Debug   bool
 	// generated in runtime
 	stopped     int32
 	tq          *tickets.Queue
@@ -84,7 +85,15 @@ func (f *Fsn) Addr() string {
 }
 
 func (f *Fsn) setupLog() {
-	log.GetMBuilder(util.ModuleName).SetFormat(log.SimpleColorFormat).SetFile(f.LogFile).Submit()
+	var logFmt, logLevel string
+	if f.Debug {
+		logFmt = "\033[1;33m%{level}\033[0m \033[1;36m%{time:2006-01-02 15:04:05.000}\033[0m \033[0;32m[servant-cluster]\033[0m \033[0;34m%{shortfile}\033[0m %{message}"
+		logLevel = "debug"
+	} else {
+		logFmt = "\033[1;36m%{time:2006-01-02 15:04:05.000}\033[0m \033[0;32m[servant-cluster]\033[0m %{message}"
+		logLevel = "info"
+	}
+	log.GetMBuilder(util.ModuleName).SetFormat(logFmt).SetLevel(logLevel).SetFile(f.LogFile).Submit()
 }
 
 func (f *Fsn) startServant() error {
