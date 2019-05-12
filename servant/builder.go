@@ -88,7 +88,7 @@ func registProcess(cli *clientv3.Client, keyf string, wid string, closeC <-chan 
 	}
 	defer session.Close()
 	k := fmt.Sprintf("%s/%x/%s", util.ServantKey(keyf), session.Lease(), wid)
-	log.M(util.ModuleName).Infof("regist self to %s", k)
+	log.M(util.ModuleName).Debugf("regist self to %s", k)
 	client := session.Client()
 	if _, err = client.Put(context.Background(), k, wid, clientv3.WithLease(session.Lease())); err != nil {
 		return err

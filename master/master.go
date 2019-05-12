@@ -35,7 +35,7 @@ func (m *Master) Run() error {
 
 	go ha.Start()
 	if !ha.IsLeader() {
-		log.M(util.ModuleName).Info("wait to be dispatcher")
+		log.M(util.ModuleName).Info("Trying to be master")
 		for {
 			role := <-ha.RoleC()
 			if role == election.Leader {
@@ -46,7 +46,7 @@ func (m *Master) Run() error {
 	if m.ScheduleInterval == 0 {
 		m.ScheduleInterval = 1 * time.Minute
 	}
-	log.M(util.ModuleName).Info("I am dispatcher now.")
+	log.M(util.ModuleName).Info("I am master now.")
 	m.sa.watch(servantsC, m.closeC)
 	for {
 		if err := m.loopOnce(); err != nil {
@@ -55,7 +55,7 @@ func (m *Master) Run() error {
 		select {
 		case role := <-ha.RoleC():
 			if role == election.Leader {
-				log.M(util.ModuleName).Info("I am dispatcher now, restart dispatching")
+				log.M(util.ModuleName).Info("I am master now, restart dispatching")
 			} else {
 				log.M(util.ModuleName).Info("Switch to candidate, pause dispatching")
 				for {
