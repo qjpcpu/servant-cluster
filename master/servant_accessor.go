@@ -26,6 +26,34 @@ func newServantAccessor(cli *clientv3.Client, key string) *servantAccessor {
 		key: key,
 	}
 }
+
+func (wa *servantAccessor) watch(notifyC chan<- struct{}, closeC <-chan struct{}) error {
+	wchan := wa.cli.Watch(context.Background(), wa.key, clientv3.WithPrefix())
+	go func() {
+		for {
+			select {
+			case <-closeC:
+				log.M(util.ModuleName).Debug("servant watch is closed.")
+				return
+			case wr := <-wchan:
+				if wr.Canceled {
+					log.M(util.ModuleName).Debug("servant watch is canceled.")
+					return
+				} else if wr.Created {
+					log.M(util.ModuleName).Debug("servant watch is created.")
+				} else {
+					log.M(util.ModuleName).Debug("servants cluster changed.")
+					select {
+					case notifyC <- struct{}{}:
+					default:
+					}
+				}
+			}
+		}
+	}()
+	return nil
+}
+
 func (wa *servantAccessor) GetServants() ([]string, error) {
 	resp, err := wa.cli.Get(context.Background(), wa.key, clientv3.WithPrefix())
 	if err != nil {

@@ -31,6 +31,8 @@ func (m *Master) Run() error {
 	ha := election.New(m.HaEtcdEndpoints, util.MasterKey(m.Prefix)).TTL(15)
 	m.ha = ha
 	m.sa = newServantAccessor(m.EtcdCli, util.ServantKey(m.Prefix))
+	servantsC := make(chan struct{})
+
 	go ha.Start()
 	if !ha.IsLeader() {
 		log.M(util.ModuleName).Info("wait to be dispatcher")
@@ -45,6 +47,7 @@ func (m *Master) Run() error {
 		m.ScheduleInterval = 1 * time.Minute
 	}
 	log.M(util.ModuleName).Info("I am dispatcher now.")
+	m.sa.watch(servantsC, m.closeC)
 	for {
 		if err := m.loopOnce(); err != nil {
 			log.M(util.ModuleName).Errorf("dispatch fail:%v", err)
@@ -63,6 +66,7 @@ func (m *Master) Run() error {
 				}
 			}
 		case <-time.After(m.ScheduleInterval):
+		case <-servantsC:
 		case <-m.closeC:
 			return nil
 		}
