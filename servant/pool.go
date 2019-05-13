@@ -1,6 +1,8 @@
 package servant
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -8,28 +10,32 @@ import (
 	"github.com/qjpcpu/log"
 	"github.com/qjpcpu/servant-cluster/tickets"
 	"github.com/qjpcpu/servant-cluster/util"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3/concurrency"
 )
 
 type ServantPool struct {
-	mutex      *sync.Mutex
-	interval   time.Duration
-	maxServant int
-	active     []*srvt
-	silent     []*srvt
-	idInc      int32
-	closeC     chan struct{}
-	jobHandler ServantHandler
-	tq         *tickets.Queue
+	mutex                  *sync.Mutex
+	interval               time.Duration
+	maxServant             int
+	active                 []*srvt
+	silent                 []*srvt
+	idInc                  int32
+	closeC                 chan struct{}
+	requestMasterScheduleC chan struct{}
+	jobHandler             ServantHandler
+	tq                     *tickets.Queue
 }
 
 func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandler ServantHandler) *ServantPool {
 	wp := &ServantPool{
-		maxServant: maxW,
-		mutex:      new(sync.Mutex),
-		interval:   workIntervalSec,
-		closeC:     make(chan struct{}, 1),
-		jobHandler: jobHandler,
-		tq:         q,
+		maxServant:             maxW,
+		mutex:                  new(sync.Mutex),
+		interval:               workIntervalSec,
+		closeC:                 make(chan struct{}, 1),
+		requestMasterScheduleC: make(chan struct{}),
+		jobHandler:             jobHandler,
+		tq:                     q,
 	}
 	go func() {
 		for {
@@ -43,6 +49,47 @@ func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandl
 		}
 	}()
 	return wp
+}
+func (p *ServantPool) startRegistProcess(cli *clientv3.Client, keyf string, wid string) {
+	go func() {
+		for {
+			p.registProcess(cli, keyf, wid)
+			select {
+			case <-p.closeC:
+				return
+			case <-time.After(1 * time.Minute):
+			}
+		}
+	}()
+}
+
+func (p *ServantPool) registProcess(cli *clientv3.Client, keyf string, wid string) error {
+	session, err := concurrency.NewSession(cli, concurrency.WithTTL(10))
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	k := fmt.Sprintf("%s/%x/%s", util.ServantKey(keyf), session.Lease(), wid)
+	log.M(util.ModuleName).Debugf("regist self to %s", k)
+	client := session.Client()
+	if _, err = client.Put(context.Background(), k, wid, clientv3.WithLease(session.Lease())); err != nil {
+		return err
+	}
+HOLDPROCESS:
+	for {
+		select {
+		case <-p.requestMasterScheduleC:
+			client.Put(context.Background(), k, wid, clientv3.WithLease(session.Lease()))
+			log.M(util.ModuleName).Debugf("%s request master reschedule", k)
+		case <-p.closeC:
+			client.Delete(context.Background(), k, clientv3.WithLease(session.Lease()))
+			log.M(util.ModuleName).Debugf("deregist self from %s", k)
+			break HOLDPROCESS
+		case <-session.Done():
+			break HOLDPROCESS
+		}
+	}
+	return nil
 }
 
 func (p *ServantPool) ResizeIfNeed(ticketCount int) {
@@ -110,6 +157,13 @@ func (p *ServantPool) RemoveServant(n int) {
 
 func (p *ServantPool) ServantCount() int {
 	return len(p.active)
+}
+
+func (p *ServantPool) RequestMasterReschedule() {
+	select {
+	case p.requestMasterScheduleC <- struct{}{}:
+	default:
+	}
 }
 
 func (p *ServantPool) Stop() {

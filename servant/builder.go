@@ -1,15 +1,10 @@
 package servant
 
 import (
-	"context"
-	"fmt"
 	"time"
 
-	"github.com/qjpcpu/log"
 	"github.com/qjpcpu/servant-cluster/tickets"
-	"github.com/qjpcpu/servant-cluster/util"
 	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
 )
 
 type ServantBuilder struct {
@@ -68,36 +63,6 @@ func (wb *ServantBuilder) Run() *ServantPool {
 		wb.intervalSec = 5
 	}
 	sp := newPool(wb.tq, wb.workerNum, wb.intervalSec, wb.jobHandler)
-	go func(closeC <-chan struct{}) {
-		for {
-			registProcess(wb.cli, wb.keyPrefix, wb.wid, closeC)
-			select {
-			case <-closeC:
-				return
-			default:
-			}
-		}
-	}(sp.closeC)
+	sp.startRegistProcess(wb.cli, wb.keyPrefix, wb.wid)
 	return sp
-}
-
-func registProcess(cli *clientv3.Client, keyf string, wid string, closeC <-chan struct{}) error {
-	session, err := concurrency.NewSession(cli, concurrency.WithTTL(10))
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	k := fmt.Sprintf("%s/%x/%s", util.ServantKey(keyf), session.Lease(), wid)
-	log.M(util.ModuleName).Debugf("regist self to %s", k)
-	client := session.Client()
-	if _, err = client.Put(context.Background(), k, wid, clientv3.WithLease(session.Lease())); err != nil {
-		return err
-	}
-	select {
-	case <-closeC:
-		client.Delete(context.Background(), k, clientv3.WithLease(session.Lease()))
-		log.M(util.ModuleName).Debugf("deregist self from %s", k)
-	case <-session.Done():
-	}
-	return nil
 }

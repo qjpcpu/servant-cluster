@@ -167,6 +167,11 @@ func (f *Fsn) startServantServer() (*servant.TicketInfoServer, error) {
 	return server, nil
 }
 
+// RequestMasterReschedule manual request master to reschedule tickets
+func (f *Fsn) RequestMasterReschedule() {
+	f.servantPool.RequestMasterReschedule()
+}
+
 func (f *Fsn) Shutdown() {
 	if atomic.CompareAndSwapInt32(&f.stopped, 0, 1) {
 		// stop master
