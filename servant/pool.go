@@ -45,13 +45,6 @@ func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandl
 	return wp
 }
 
-func min(a, b int) int {
-	if a > b {
-		return b
-	}
-	return a
-}
-
 func (p *ServantPool) ResizeIfNeed(ticketCount int) {
 	wc := p.ServantCount()
 	if ticketCount < wc {
@@ -59,7 +52,7 @@ func (p *ServantPool) ResizeIfNeed(ticketCount int) {
 		return
 	}
 	if ticketCount > wc && p.maxServant > wc {
-		p.AddServant(min(p.maxServant, ticketCount) - wc)
+		p.AddServant(util.Min(p.maxServant, ticketCount) - wc)
 		return
 	}
 }

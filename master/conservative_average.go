@@ -1,9 +1,9 @@
 package master
 
 import (
-	"sort"
-
 	"github.com/qjpcpu/servant-cluster/tickets"
+	"github.com/qjpcpu/servant-cluster/util"
+	"sort"
 )
 
 func ConservativeAverageDispatch(tks tickets.Tickets, last *CurrentDispatch, newDis *NewDispatch) error {
@@ -52,8 +52,8 @@ func ConservativeAverageDispatch(tks tickets.Tickets, last *CurrentDispatch, new
 	sort.Sort(remainTickets)
 	remainCount := len(remainTickets)
 	for i := len(newPayloads) - 1; i >= 0 && remainCount > 0; i-- {
-		diff := average - len(newPayloads[i].Tickets)
-		if diff > 0 && remainCount >= diff {
+		diff := util.Min(average-len(newPayloads[i].Tickets), remainCount)
+		if diff > 0 {
 			newPayloads[i].Tickets = append(newPayloads[i].Tickets, remainTickets[remainCount-diff:remainCount]...)
 			remainCount -= diff
 		}

@@ -11,3 +11,10 @@ func MasterKey(prefix string) string {
 func ServantKey(prefix string) string {
 	return prefix + "/servants"
 }
+
+func Min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
