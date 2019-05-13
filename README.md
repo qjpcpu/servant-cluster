@@ -24,3 +24,10 @@
 ## example
 
 参考示例代码[example.go](https://github.com/qjpcpu/servant-cluster/blob/master/example/example.go)
+
+假定etcd地址是`127.0.0.1:2379`,执行示例代码:
+
+```
+# 可以同时执行多次命令,模拟多个servant进程
+cd servant-cluster/example/ && go run example.go
+```

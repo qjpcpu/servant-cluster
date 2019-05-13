@@ -26,7 +26,7 @@ func main() {
 		IP:                      "127.0.0.1",
 		EtcdPrefix:              "/servant-cluster/example",
 		MasterScheduleInterval:  60 * time.Second,
-		ServantScheduleInterval: 1 * time.Second,
+		ServantScheduleInterval: 2 * time.Second,
 		//LogFile:                 "./log/example.log",
 	}
 	if err := f.Boot(); err != nil {
@@ -67,4 +67,7 @@ func sysFetcher() ([]byte, error) {
 func loadTicketsFromStorage() {
 	text := `[{"ID":"1","Content":"ZTM2NTc2NzcxNjU2MDBjMTdiYmE1YmY2MDc5ZDdjNzA=","Type":0},{"ID":"2","Content":"NWNmZTkzOWQ2ODEwODUwMWIxYWQ3Y2Y1NGJlNWE5OTU=","Type":0},{"ID":"3","Content":"Nzk1ODNlYjIxZWQxZTNhZjhmZTkwNzBkNjVmYzZlZWQ=","Type":0},{"ID":"4","Content":"YzlmZjY2MGNhNTQ5MjRkNzBjZWE4Y2I1OWE3OTRiNjc=","Type":0},{"ID":"5","Content":"MTUxMTZkZjNkZGQyMjY4NzE2ODQ3MWI5ODdkMDE2ODc=","Type":0}]`
 	json.Unmarshal([]byte(text), &allTickets)
+	for i := range allTickets {
+		allTickets[i].Type = tickets.SolidTicket
+	}
 }

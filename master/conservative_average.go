@@ -51,9 +51,9 @@ func ConservativeAverageDispatch(tks tickets.Tickets, last *CurrentDispatch, new
 	}
 	sort.Sort(remainTickets)
 	remainCount := len(remainTickets)
-	for i := len(newPayloads) - 1; i >= 0; i-- {
+	for i := len(newPayloads) - 1; i >= 0 && remainCount > 0; i-- {
 		diff := average - len(newPayloads[i].Tickets)
-		if diff > 0 {
+		if diff > 0 && remainCount >= diff {
 			newPayloads[i].Tickets = append(newPayloads[i].Tickets, remainTickets[remainCount-diff:remainCount]...)
 			remainCount -= diff
 		}

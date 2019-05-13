@@ -93,7 +93,7 @@ func (p *ServantPool) AddServant(n int) {
 		p.active = append(p.active, p.silent[0:n]...)
 		p.silent = p.silent[n:]
 	}
-	log.M(util.ModuleName).Infof("增加worker至%d个", len(p.active))
+	log.M(util.ModuleName).Infof("increase worker up to %d", len(p.active))
 }
 
 func (p *ServantPool) RemoveServant(n int) {
@@ -112,7 +112,7 @@ func (p *ServantPool) RemoveServant(n int) {
 	}
 	p.silent = append(p.silent, p.active[len(p.active)-n:]...)
 	p.active = p.active[0 : len(p.active)-n]
-	log.M(util.ModuleName).Infof("减少worker至%d个", len(p.active))
+	log.M(util.ModuleName).Infof("decrease worker down to %d", len(p.active))
 }
 
 func (p *ServantPool) ServantCount() int {
