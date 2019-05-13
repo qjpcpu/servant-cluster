@@ -25,6 +25,7 @@ type ServantPool struct {
 	requestMasterScheduleC chan struct{}
 	jobHandler             ServantHandler
 	tq                     *tickets.Queue
+	stopped                int32
 }
 
 func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandler ServantHandler) *ServantPool {
@@ -82,10 +83,9 @@ HOLDPROCESS:
 			client.Put(context.Background(), k, wid, clientv3.WithLease(session.Lease()))
 			log.M(util.ModuleName).Debugf("%s request master reschedule", k)
 		case <-p.closeC:
-			client.Delete(context.Background(), k, clientv3.WithLease(session.Lease()))
-			log.M(util.ModuleName).Debugf("deregist self from %s", k)
 			break HOLDPROCESS
 		case <-session.Done():
+			p.Stop()
 			break HOLDPROCESS
 		}
 	}
@@ -167,15 +167,17 @@ func (p *ServantPool) RequestMasterReschedule() {
 }
 
 func (p *ServantPool) Stop() {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	for _, w := range p.active {
-		w.stop()
+	if atomic.CompareAndSwapInt32(&p.stopped, 0, 1) {
+		p.mutex.Lock()
+		defer p.mutex.Unlock()
+		for _, w := range p.active {
+			w.stop()
+		}
+		for _, w := range p.silent {
+			w.stop()
+		}
+		close(p.closeC)
+		p.active = nil
+		p.silent = nil
 	}
-	for _, w := range p.silent {
-		w.stop()
-	}
-	close(p.closeC)
-	p.active = nil
-	p.silent = nil
 }
