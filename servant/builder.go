@@ -95,6 +95,8 @@ func registProcess(cli *clientv3.Client, keyf string, wid string, closeC <-chan 
 	}
 	select {
 	case <-closeC:
+		client.Delete(context.Background(), k, clientv3.WithLease(session.Lease()))
+		log.M(util.ModuleName).Debugf("deregist self from %s", k)
 	case <-session.Done():
 	}
 	return nil

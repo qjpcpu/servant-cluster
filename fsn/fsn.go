@@ -177,5 +177,6 @@ func (f *Fsn) Shutdown() {
 		f.grpcServer.Stop()
 		// close etcd client
 		f.etcdCli.Close()
+		time.Sleep(100 * time.Millisecond)
 	}
 }
