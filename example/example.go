@@ -12,12 +12,12 @@ import (
 
 var (
 	allTickets tickets.Tickets
-	f          *fsn.Fsn
+	f          *fsn.Grail
 )
 
 func main() {
 	loadTicketsFromStorage()
-	f = &fsn.Fsn{
+	f = &fsn.Grail{
 		EtcdEndpoints:           []string{"127.0.0.1:2379"},
 		DispatchHandler:         masterDispatchHandler,
 		ServantHandler:          servantHandler,

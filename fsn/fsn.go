@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Fsn struct {
+type Grail struct {
 	// config fields
 	// etcd endpoints
 	EtcdEndpoints []string
@@ -37,7 +37,7 @@ type Fsn struct {
 	MasterScheduleInterval time.Duration
 	// servant worker schedule interval for
 	ServantScheduleInterval time.Duration
-	// fsn log file
+	// Grail log file
 	LogFile string
 	Debug   bool
 	// generated in runtime
@@ -50,7 +50,7 @@ type Fsn struct {
 	port        string
 }
 
-func (f *Fsn) Boot() error {
+func (f *Grail) Boot() error {
 	if f.stopped == 1 {
 		return errors.New("already stopped")
 	}
@@ -80,11 +80,11 @@ func (f *Fsn) Boot() error {
 	return nil
 }
 
-func (f *Fsn) Addr() string {
+func (f *Grail) Addr() string {
 	return f.IP + f.port
 }
 
-func (f *Fsn) setupLog() {
+func (f *Grail) setupLog() {
 	var logFmt, logLevel string
 	if f.Debug {
 		logFmt = "\033[1;33m%{level}\033[0m \033[1;36m%{time:2006-01-02 15:04:05.000}\033[0m \033[0;32m[servant-cluster]\033[0m \033[0;34m%{shortfile}\033[0m %{message}"
@@ -96,7 +96,7 @@ func (f *Fsn) setupLog() {
 	log.GetMBuilder(util.ModuleName).SetFormat(logFmt).SetLevel(logLevel).SetFile(f.LogFile).Submit()
 }
 
-func (f *Fsn) startServant() error {
+func (f *Grail) startServant() error {
 	if f.ServantHandler == nil {
 		return errors.New("no ServantHandler found")
 	}
@@ -121,7 +121,7 @@ func (f *Fsn) startServant() error {
 	return nil
 }
 
-func (f *Fsn) startMaster() error {
+func (f *Grail) startMaster() error {
 	if f.DispatchHandler == nil {
 		return errors.New("no DispatchHandler found")
 	}
@@ -139,7 +139,7 @@ func (f *Fsn) startMaster() error {
 	return nil
 }
 
-func (f *Fsn) connectEtcd() error {
+func (f *Grail) connectEtcd() error {
 	if len(f.EtcdEndpoints) == 0 {
 		return errors.New("bad etcd config")
 	}
@@ -151,7 +151,7 @@ func (f *Fsn) connectEtcd() error {
 	return nil
 }
 
-func (f *Fsn) startServantServer() (*servant.TicketInfoServer, error) {
+func (f *Grail) startServantServer() (*servant.TicketInfoServer, error) {
 	server := servant.NewTicketInfoServer(f.tq, f.SysFetcher)
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -168,11 +168,11 @@ func (f *Fsn) startServantServer() (*servant.TicketInfoServer, error) {
 }
 
 // RequestMasterReschedule manual request master to reschedule tickets
-func (f *Fsn) RequestMasterReschedule() {
+func (f *Grail) RequestMasterReschedule() {
 	f.servantPool.RequestMasterReschedule()
 }
 
-func (f *Fsn) Shutdown() {
+func (f *Grail) Shutdown() {
 	if atomic.CompareAndSwapInt32(&f.stopped, 0, 1) {
 		// stop master
 		f.masterCtrl.Stop()
@@ -182,6 +182,6 @@ func (f *Fsn) Shutdown() {
 		f.grpcServer.Stop()
 		// close etcd client
 		f.etcdCli.Close()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 }
