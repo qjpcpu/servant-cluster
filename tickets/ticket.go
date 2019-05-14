@@ -47,11 +47,7 @@ func (ts Tickets) Equals(ts1 Tickets) bool {
 func (ts Tickets) Summary() string {
 	var list []string
 	for _, t := range ts {
-		rs := []rune(t.ID)
-		if len(rs) > 11 {
-			rs = append(rs[:8], 46, 46, 46)
-		}
-		list = append(list, string(rs))
+		list = append(list, t.ID)
 	}
 	sort.Strings(list)
 	return "[" + strings.Join(list, ",") + "]"
