@@ -1,6 +1,7 @@
 package servant
 
 import (
+	"sync"
 	"time"
 
 	"github.com/qjpcpu/log"
@@ -30,7 +31,11 @@ func newServant(id int32, tq *tickets.Queue, intervalSec time.Duration, handler 
 	}
 }
 
-func (w *srvt) start() {
+func (w *srvt) start(wg *sync.WaitGroup) {
+	defer func() {
+		wg.Done()
+		log.M(util.ModuleName).Infof("worker-%d exit.", w.id)
+	}()
 	for {
 		select {
 		case <-w.stopC:

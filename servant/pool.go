@@ -26,6 +26,7 @@ type ServantPool struct {
 	jobHandler             ServantHandler
 	tq                     *tickets.Queue
 	stopped                int32
+	wg                     *sync.WaitGroup
 }
 
 func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandler ServantHandler) *ServantPool {
@@ -37,12 +38,15 @@ func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandl
 		requestMasterScheduleC: make(chan struct{}),
 		jobHandler:             jobHandler,
 		tq:                     q,
+		wg:                     new(sync.WaitGroup),
 	}
 	go func() {
+		wp.wg.Add(1)
+		defer wp.wg.Done()
 		for {
 			select {
 			case <-wp.closeC:
-				log.M(util.ModuleName).Info("srvtpool exit.")
+				log.M(util.ModuleName).Info("resize goroutine  exit.")
 				return
 			case size := <-q.SizeChangeC():
 				wp.ResizeIfNeed(size)
@@ -52,11 +56,14 @@ func newPool(q *tickets.Queue, maxW int, workIntervalSec time.Duration, jobHandl
 	return wp
 }
 func (p *ServantPool) startRegistProcess(cli *clientv3.Client, keyf string, wid string) {
+	p.wg.Add(1)
 	go func() {
+		defer p.wg.Done()
 		for {
 			p.registProcess(cli, keyf, wid)
 			select {
 			case <-p.closeC:
+				log.M(util.ModuleName).Info("regist goroutine exit.")
 				return
 			case <-time.After(1 * time.Minute):
 			}
@@ -123,7 +130,8 @@ func (p *ServantPool) AddServant(n int) {
 		n -= len(p.silent)
 		for i := 0; i < n; i++ {
 			w := newServant(atomic.AddInt32(&p.idInc, 1), p.tq, p.interval, p.jobHandler)
-			go w.start()
+			p.wg.Add(1)
+			go w.start(p.wg)
 			p.active = append(p.active, w)
 		}
 	} else {
@@ -179,5 +187,7 @@ func (p *ServantPool) Stop() {
 		close(p.closeC)
 		p.active = nil
 		p.silent = nil
+		p.wg.Wait()
+		log.M(util.ModuleName).Info("servant pool exit.")
 	}
 }

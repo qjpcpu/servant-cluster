@@ -2,6 +2,7 @@ package master
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/qjpcpu/common/election"
@@ -21,12 +22,18 @@ type Master struct {
 	ha     *election.HA
 	sa     *servantAccessor
 	closeC chan struct{}
+	wg     *sync.WaitGroup
 }
 
 func (m *Master) Run() error {
 	if m.DispatchHandler == nil || m.EtcdCli == nil || len(m.HaEtcdEndpoints) == 0 {
 		return errors.New("bad master config")
 	}
+	if m.wg == nil {
+		m.wg = new(sync.WaitGroup)
+	}
+	m.wg.Add(1)
+	defer m.wg.Done()
 	m.closeC = make(chan struct{})
 	ha := election.New(m.HaEtcdEndpoints, util.MasterKey(m.Prefix)).TTL(15)
 	m.ha = ha
@@ -36,10 +43,15 @@ func (m *Master) Run() error {
 	go ha.Start()
 	if !ha.IsLeader() {
 		log.M(util.ModuleName).Info("Trying to be master")
+	CAMPAIGN:
 		for {
-			role := <-ha.RoleC()
-			if role == election.Leader {
-				break
+			select {
+			case role := <-ha.RoleC():
+				if role == election.Leader {
+					break CAMPAIGN
+				}
+			case <-m.closeC:
+				return nil
 			}
 		}
 	}
@@ -76,6 +88,8 @@ func (m *Master) Run() error {
 func (m *Master) Stop() {
 	close(m.closeC)
 	m.ha.Stop()
+	m.wg.Wait()
+	log.M(util.ModuleName).Info("master goroutine exit.")
 }
 
 func (m *Master) loopOnce() error {
