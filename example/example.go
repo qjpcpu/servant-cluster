@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/qjpcpu/servant-cluster/fsn"
 	"github.com/qjpcpu/servant-cluster/master"
 	"github.com/qjpcpu/servant-cluster/tickets"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 var (
@@ -33,8 +35,10 @@ func main() {
 		fmt.Println("fsn boot fail:", err)
 		return
 	}
-	stopC := make(chan struct{}, 1)
-	<-stopC
+	defer f.Shutdown()
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGABRT, syscall.SIGALRM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	<-sigchan
 }
 
 func masterDispatchHandler(lastDisptch *master.CurrentDispatch, newDispatch *master.NewDispatch) error {
